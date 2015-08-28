@@ -43,58 +43,73 @@ namespace praecipita
             string currTime = "";
             string stationName = "";
             string variableName = "";
-            bool wbOpen = false;
             Microsoft.Office.Interop.Excel.Application excel = new Microsoft.Office.Interop.Excel.Application();
             DirectoryInfo rootDir = new DirectoryInfo(textBox1.Text);
             DirectoryInfo[] folders = rootDir.GetDirectories();
+            int nbOfFolders = folders.Count();
+            int nbOfFiles = 0;
+            int folderCount = 0;
+            int fileCount = 0;
             foreach(DirectoryInfo currFolder in folders)
             {
+                nbOfFiles = currFolder.GetFiles().Count();
+                folderCount += 1;
                 foreach (FileInfo currFile in currFolder.GetFiles())
                 {
                     if(currFile.Name.IndexOf(".xls") > 0)
                     {
-                        stationName = currFile.Name.Substring(0, currFile.Name.Length - 4);
+                        fileCount += 1;
+                        stationName = currFile.Name.Substring(1, currFile.Name.Length - 5);
+                        if (stationName.Substring(stationName.Length - 1, 1) == "_")
+                            stationName = stationName.Substring(0, stationName.Length - 1);
+                        if (stationName.IndexOf("_2015") > -1)
+                            stationName = stationName.Replace("_2015", "");
                         Workbook currWB = excel.Workbooks.Open(currFile.FullName);
-                        wbOpen = true;
                         Worksheet currWS = currWB.Sheets[1];
+                        Range usedRange = currWS.UsedRange;
+                        var rangeArray = usedRange.Value;
+                        currWS.Rows.ClearFormats();
+                        currWS.Columns.ClearFormats();
                         maxRow = currWS.UsedRange.Rows.Count;
                         maxCol = currWS.UsedRange.Columns.Count;
-
-                        Range usedRange = currWS.UsedRange;
-                        try
+                        
+                        if (checkBox1.Checked)
                         {
-                            for (rowsIndex = startRow; rowsIndex <= maxRow; rowsIndex++)
+                            textBox2.Text = stationName + Environment.NewLine;
+                            textBox2.Text += "File " + fileCount.ToString() + " of " + nbOfFiles.ToString() + " in folder " + folderCount.ToString() + " of " + nbOfFolders.ToString();
+                            textBox2.Refresh();
+                        }
+                        for (rowsIndex = startRow; rowsIndex <= maxRow; rowsIndex++)
+                        {
+                            try
                             {
-                                try
+                                currDate = rangeArray[rowsIndex, dateCol];
+                                for (colsIndex = startCol; colsIndex <= maxCol; colsIndex++)
                                 {
-                                    currDate = usedRange.Cells[rowsIndex, dateCol].Value;
-                                    for (colsIndex = startCol; colsIndex <= maxCol; colsIndex++)
+                                    try
                                     {
-                                        if (usedRange.Cells[rowsIndex, colsIndex].Value.ToString() == "NULL")
-                                            currValueStr = usedRange.Cells[rowsIndex, colsIndex].Value;
+                                        if (rangeArray[rowsIndex, colsIndex].ToString() == "NULL")
+                                            currValueStr = rangeArray[rowsIndex, colsIndex];
                                         else
-                                            currValueStr = usedRange.Cells[rowsIndex, colsIndex].Value.ToString().Replace(",", ".");
-                                        currTime = usedRange.Cells[timeRow, colsIndex].Value.ToString("0000");
+                                            currValueStr = rangeArray[rowsIndex, colsIndex].ToString().Replace(",", ".");
+                                        currTime = rangeArray[timeRow, colsIndex].ToString("0000");
                                         currTime = currTime.Substring(0, 2) + ":" + currTime.Substring(2, 2);
-                                        variableName = usedRange.Cells[varRow, colsIndex].Value.Replace(" ", "_");
+                                        variableName = rangeArray[varRow, colsIndex].Replace(" ", "_");
                                         currLine = stationName + ";" + currDate.ToString("dd/MM/yyyy") + " " + currTime + ";" + variableName + ";" + currValueStr;
-                                        //textBox2.Text = currLine;
-                                        textBox2.Text = currDate.ToString("dd/MM/yyyy");
+                                    }
+                                    catch // There are empty cols in used range
+                                    {
+                                        colsIndex = maxCol;
                                     }
                                 }
-                                catch(Exception)
-                                {
-
-                                }
                             }
-                            currWB.Close();
+                            catch // There are empty rows in used range
+                            {
+                                rowsIndex = maxRow;
+                            }
                         }
-                        catch(Exception) // There are empty cells in the used rows
-                        {
-                            textBox2.Text = stationName + " processed";
-                            currWB.Close();
-                            wbOpen = false;
-                        }
+                        currWB.Close();
+                        fileCount = 0;
                     }
                 }
             }
