@@ -34,11 +34,7 @@ namespace praecipita
             int startRow = 12;
             int startCol = 2;
             int maxRow = 0;
-            int maxCols = 0;
-            int rangeStartRow = 1;
-            int rangeStartCol = 1;
-            int rangeMaxRow;
-            int rangeMaxCol;
+            int maxCol = 0;
             int rowsIndex = 0;
             int colsIndex = 0;
             string currLine = "";
@@ -47,6 +43,7 @@ namespace praecipita
             string currTime = "";
             string stationName = "";
             string variableName = "";
+            bool wbOpen = false;
             Microsoft.Office.Interop.Excel.Application excel = new Microsoft.Office.Interop.Excel.Application();
             DirectoryInfo rootDir = new DirectoryInfo(textBox1.Text);
             DirectoryInfo[] folders = rootDir.GetDirectories();
@@ -58,38 +55,46 @@ namespace praecipita
                     {
                         stationName = currFile.Name.Substring(0, currFile.Name.Length - 4);
                         Workbook currWB = excel.Workbooks.Open(currFile.FullName);
+                        wbOpen = true;
                         Worksheet currWS = currWB.Sheets[1];
-
-                        // The following 2 lines exclude the null cells within used range
-                        
-                        currWS.Rows.ClearFormats();
-                        currWS.Columns.ClearFormats();
-
                         maxRow = currWS.UsedRange.Rows.Count;
-                        maxCols = currWS.UsedRange.Columns.Count;
+                        maxCol = currWS.UsedRange.Columns.Count;
 
-                        Range usedRange = currWS.get_Range(currWS.Cells[varRow,dateCol],currWS.Cells[maxRow,maxCols]);
-                        object[,] valueArray = (object[,])usedRange.get_Value(XlRangeValueDataType.xlRangeValueDefault);
-                        rangeMaxRow = maxRow - startRow + 1;
-                        rangeMaxCol = maxCols - dateCol + 1;
-                        for (rowsIndex = rangeStartRow; rowsIndex <= rangeMaxRow; rowsIndex++)
+                        Range usedRange = currWS.UsedRange;
+                        try
                         {
-                            currDate = currWS.Cells[rowsIndex, dateCol].Value;
-                            for (colsIndex = startCol; colsIndex <= maxCols; colsIndex++)
+                            for (rowsIndex = startRow; rowsIndex <= maxRow; rowsIndex++)
                             {
-                                if (currWS.Cells[rowsIndex, colsIndex].Value.ToString() == "NULL")
-                                    currValueStr = currWS.Cells[rowsIndex, colsIndex].Value;
-                                else
-                                    currValueStr = currWS.Cells[rowsIndex, colsIndex].Value.ToString().Replace(",", ".");
-                                currTime = currWS.Cells[timeRow, colsIndex].Value.ToString("0000");
-                                currTime = currTime.Substring(0, 2) + ":" + currTime.Substring(2, 2);
-                                variableName = currWS.Cells[varRow, colsIndex].Value.Replace(" ", "_");
-                                currLine = stationName + ";" + currDate.ToString("dd/MM/yyyy") + " " + currTime + ";" + variableName + ";" + currValueStr;
-                                //textBox2.Text = currLine;
-                                textBox2.Text = currDate.ToString("dd/MM/yyyy");
+                                try
+                                {
+                                    currDate = usedRange.Cells[rowsIndex, dateCol].Value;
+                                    for (colsIndex = startCol; colsIndex <= maxCol; colsIndex++)
+                                    {
+                                        if (usedRange.Cells[rowsIndex, colsIndex].Value.ToString() == "NULL")
+                                            currValueStr = usedRange.Cells[rowsIndex, colsIndex].Value;
+                                        else
+                                            currValueStr = usedRange.Cells[rowsIndex, colsIndex].Value.ToString().Replace(",", ".");
+                                        currTime = usedRange.Cells[timeRow, colsIndex].Value.ToString("0000");
+                                        currTime = currTime.Substring(0, 2) + ":" + currTime.Substring(2, 2);
+                                        variableName = usedRange.Cells[varRow, colsIndex].Value.Replace(" ", "_");
+                                        currLine = stationName + ";" + currDate.ToString("dd/MM/yyyy") + " " + currTime + ";" + variableName + ";" + currValueStr;
+                                        //textBox2.Text = currLine;
+                                        textBox2.Text = currDate.ToString("dd/MM/yyyy");
+                                    }
+                                }
+                                catch(Exception)
+                                {
+
+                                }
                             }
+                            currWB.Close();
                         }
-                        currWB.Close();
+                        catch(Exception) // There are empty cells in the used rows
+                        {
+                            textBox2.Text = stationName + " processed";
+                            currWB.Close();
+                            wbOpen = false;
+                        }
                     }
                 }
             }
