@@ -43,6 +43,7 @@ namespace praecipita
             string currTime = "";
             string stationName = "";
             string variableName = "";
+            string outputFileName = "";
             Microsoft.Office.Interop.Excel.Application excel = new Microsoft.Office.Interop.Excel.Application();
             DirectoryInfo rootDir = new DirectoryInfo(textBox1.Text);
             DirectoryInfo[] folders = rootDir.GetDirectories();
@@ -50,6 +51,9 @@ namespace praecipita
             int nbOfFiles = 0;
             int folderCount = 0;
             int fileCount = 0;
+
+            Cursor.Current = Cursors.WaitCursor;
+
             foreach(DirectoryInfo currFolder in folders)
             {
                 nbOfFiles = currFolder.GetFiles().Count();
@@ -60,10 +64,14 @@ namespace praecipita
                     {
                         fileCount += 1;
                         stationName = currFile.Name.Substring(1, currFile.Name.Length - 5);
+                        outputFileName = currFile.FullName.Substring(0, currFile.FullName.Length - currFile.Name.Length) + currFile.Name.Substring(0, currFile.Name.Length - 4) + ".dat";
+                        StreamWriter outputStream = new StreamWriter(outputFileName);
+
                         if (stationName.Substring(stationName.Length - 1, 1) == "_")
                             stationName = stationName.Substring(0, stationName.Length - 1);
                         if (stationName.IndexOf("_2015") > -1)
                             stationName = stationName.Replace("_2015", "");
+
                         Workbook currWB = excel.Workbooks.Open(currFile.FullName);
                         Worksheet currWS = currWB.Sheets[1];
                         Range usedRange = currWS.UsedRange;
@@ -75,7 +83,7 @@ namespace praecipita
                         
                         if (checkBox1.Checked)
                         {
-                            textBox2.Text = stationName + Environment.NewLine;
+                            textBox2.Text = "Reading " + currFile.Name + Environment.NewLine;
                             textBox2.Text += "File " + fileCount.ToString() + " of " + nbOfFiles.ToString() + " in folder " + folderCount.ToString() + " of " + nbOfFolders.ToString();
                             textBox2.Refresh();
                         }
@@ -96,6 +104,7 @@ namespace praecipita
                                         currTime = currTime.Substring(0, 2) + ":" + currTime.Substring(2, 2);
                                         variableName = rangeArray[varRow, colsIndex].Replace(" ", "_");
                                         currLine = stationName + ";" + currDate.ToString("dd/MM/yyyy") + " " + currTime + ";" + variableName + ";" + currValueStr;
+                                        outputStream.WriteLine(currLine);
                                     }
                                     catch // There are empty cols in used range
                                     {
@@ -108,12 +117,13 @@ namespace praecipita
                                 rowsIndex = maxRow;
                             }
                         }
-                        currWB.Close();
-                        fileCount = 0;
+                        currWB.Close(false);
+                        outputStream.Close();
                     }
                 }
+                fileCount = 0;
             }
+            Cursor.Current = Cursors.Default;
         }
-
     }
 }
